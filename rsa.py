@@ -72,9 +72,11 @@ class RSA():
 
     def new_key(self, bits):
         bits //= 2
-        z, e = EXP, EXP
+        z, e, p, q = EXP, EXP, 0, 0
         while not z % e:
-            p, q = [prime_generator(2 ** (bits - 1), 2 ** bits - 1)] * 2
+            while p == q:
+                p, q = (prime_generator(2 ** (bits - 1), 2 ** bits - 1)
+                        for r in range(2))
             n = p * q
             z = (p - 1) * (q - 1)
         self.public = (e, n)
