@@ -84,7 +84,6 @@ def int_to_bytes(value, min_len=0):
         bytes_.append(0)
 
     bytes_.reverse()
-
     return bytes_
 
 
@@ -102,8 +101,7 @@ class RSA():
             n = p * q
             z = (p - 1) * (q - 1)
         d = modinv(e, z)
-        self.public = (e, n)
-        self.private = (d, n)
+        self.n, self.public, self.private = n, e, d
         self.key_length = math.ceil(math.log(n, 256))
 
     def encrypt(self, data, bs=BS):
@@ -114,24 +112,28 @@ class RSA():
         out = []
         for x in range(0, len(data), bs):
             a = bytes_to_int(data[x:x + bs])
-            b = pow(a, self.public[0], self.public[1])
+            b = pow(a, self.public, self.n)
             out.extend(int_to_bytes(b, self.key_length))
 
         return bytes(out)
 
     def decrypt(self, data, bs=BS):
         value = bytes_to_int(list(data))
-        a = pow(value, self.private[0], self.private[1])
-        bytes_ = bytes(int_to_bytes(a))
+        a = pow(value, self.private, self.n)
+        bytes_ = int_to_bytes(a)
 
-        return bytes_
+        return bytes(bytes_)
 
 
 if __name__ == '__main__':
     rsa = RSA()
     rsa.new_key(256)
+
     with open('rsa.py', 'rb') as f:
-        m = rsa.encrypt(f.read())
-    print(m)
-    m = rsa.decrypt(m).decode()
-    print(m)
+        data = f.read()
+
+    for data in ['hello world', 'the quick brown fox jumped over the lazy dog']:
+        cipher = rsa.encrypt(data.encode())
+        print(cipher)
+        data = rsa.decrypt(cipher).decode()
+        print(data)
