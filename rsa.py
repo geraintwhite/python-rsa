@@ -1,8 +1,9 @@
 import random
+import math
 
 
 rng = random.SystemRandom()
-EXP = 65537
+EXP, BS = 65537, 16
 
 
 def is_prime(n, k=10):
@@ -66,33 +67,71 @@ def modinv(a, m):
         return False
 
 
+def bytes_to_int(bytes_):
+    value = 0
+    for byte in bytes_:
+        value = (value << 8) + byte
+    return value
+
+
+def int_to_bytes(value, min_len=0):
+    bytes_ = []
+    while value > 0:
+        bytes_.append(value & 255)
+        value >>= 8
+
+    while len(bytes_) < min_len:
+        bytes_.append(0)
+
+    bytes_.reverse()
+
+    return bytes_
+
+
 class RSA():
     def __init__(self):
         pass
 
-    def new_key(self, bits):
+    def new_key(self, bits=2048):
         bits //= 2
         z, e, p, q = EXP, EXP, 0, 0
         while not z % e:
-            while p == q:
+            while p is q:
                 p, q = (prime_generator(2 ** (bits - 1), 2 ** bits - 1)
                         for r in range(2))
             n = p * q
             z = (p - 1) * (q - 1)
+        d = modinv(e, z)
         self.public = (e, n)
-        self.private = (modinv(e, z), n)
+        self.private = (d, n)
+        self.key_length = math.ceil(math.log(n, 256))
 
-    def encrypt(self, m):
-        return pow(m, self.public[0], self.public[1])
+    def encrypt(self, data, bs=BS):
+        data, value = list(data), 0
+        while len(data) % bs:
+            data.append(0)
 
-    def decrypt(self, m):
-        return pow(m, self.private[0], self.private[1])
+        out = []
+        for x in range(0, len(data), bs):
+            a = bytes_to_int(data[x:x + bs])
+            b = pow(a, self.public[0], self.public[1])
+            out.extend(int_to_bytes(b, self.key_length))
+
+        return bytes(out)
+
+    def decrypt(self, data, bs=BS):
+        value = bytes_to_int(list(data))
+        a = pow(value, self.private[0], self.private[1])
+        bytes_ = bytes(int_to_bytes(a))
+
+        return bytes_
 
 
 if __name__ == '__main__':
     rsa = RSA()
-    rsa.new_key(2048)
-    m = rsa.encrypt(1234)
+    rsa.new_key(256)
+    with open('rsa.py', 'rb') as f:
+        m = rsa.encrypt(f.read())
     print(m)
-    m = rsa.decrypt(m)
+    m = rsa.decrypt(m).decode()
     print(m)
