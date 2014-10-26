@@ -68,6 +68,8 @@ def modinv(a, m):
 
 
 def bytes_to_int(bytes_):
+    ''' returns an integer from a list of bytes '''
+
     value = 0
     for byte in bytes_:
         value = (value << 8) + byte
@@ -75,6 +77,8 @@ def bytes_to_int(bytes_):
 
 
 def int_to_bytes(value, min_len=0):
+    ''' returns a list of bytes from an integer '''
+
     bytes_ = []
     while value > 0:
         bytes_.append(value & 255)
@@ -92,19 +96,22 @@ class RSA():
         pass
 
     def new_key(self, bits=2048):
+        ''' stores a new public and private key in the object '''
+
         bits //= 2
         z, e, p, q = EXP, EXP, 0, 0
         while not z % e:
             while p is q:
                 p, q = (prime_generator(2 ** (bits - 1), 2 ** bits - 1)
                         for r in range(2))
-            n = p * q
             z = (p - 1) * (q - 1)
-        d = modinv(e, z)
+        n, d = p * q, modinv(e, z)
         self.n, self.public, self.private = n, e, d
         self.key_length = math.ceil(math.log(n, 256))
 
     def encrypt(self, data, bs=BS):
+        ''' encrypt data with stored public key '''
+
         data, value = list(data), 0
         while len(data) % bs:
             data.append(0)
@@ -118,6 +125,8 @@ class RSA():
         return bytes(out)
 
     def decrypt(self, data, bs=BS):
+        ''' decrypt data with stored private key '''
+
         data, out = list(data), []
         for x in range(0, len(data), self.key_length):
             a = bytes_to_int(data[x:x + self.key_length])
@@ -129,7 +138,7 @@ class RSA():
 
 if __name__ == '__main__':
     rsa = RSA()
-    rsa.new_key(2048)
+    rsa.new_key()
 
     with open('rsa.py') as f:
         data = f.read()
