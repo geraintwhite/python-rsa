@@ -118,22 +118,22 @@ class RSA():
         return bytes(out)
 
     def decrypt(self, data, bs=BS):
-        value = bytes_to_int(list(data))
-        a = pow(value, self.private, self.n)
-        bytes_ = int_to_bytes(a)
+        data, out = list(data), []
+        for x in range(0, len(data), self.key_length):
+            a = bytes_to_int(data[x:x + self.key_length])
+            b = pow(a, self.private, self.n)
+            out.extend(int_to_bytes(b))
 
-        return bytes(bytes_)
+        return bytes(out)
 
 
 if __name__ == '__main__':
     rsa = RSA()
-    rsa.new_key(256)
+    rsa.new_key(2048)
 
-    with open('rsa.py', 'rb') as f:
+    with open('rsa.py') as f:
         data = f.read()
-
-    for data in ['hello world', 'the quick brown fox jumped over the lazy dog']:
-        cipher = rsa.encrypt(data.encode())
-        print(cipher)
-        data = rsa.decrypt(cipher).decode()
-        print(data)
+    cipher = rsa.encrypt(data.encode())
+    print(cipher)
+    data = rsa.decrypt(cipher).decode()
+    print(data)
