@@ -1,5 +1,7 @@
 import random
 import math
+import json
+from base64 import b64encode, b64decode
 
 
 rng = random.SystemRandom()
@@ -91,9 +93,27 @@ def int_to_bytes(value, min_len=0):
     return bytes_
 
 
+def int_to_b64(value):
+    ''' returns base64 equivalent of an integer '''
+
+    bytes_ = bytes(int_to_bytes(value))
+    b64 = b64encode(bytes_).decode()
+    return b64
+
+
+def b64_to_int(b64):
+    ''' returns integer equivalent of a base64 string '''
+
+    bytes_ = b64decode(b64.encode())
+    value = bytes_to_int(bytes_)
+    return value
+
+
 class RSA():
     def __init__(self):
-        pass
+        ''' initialise key values '''
+
+        self.n, self.d, self.e = 0, 0, 0
 
     def new_key(self, bits=2048):
         ''' stores a new public and private key in the object '''
@@ -106,7 +126,7 @@ class RSA():
                         for r in range(2))
             z = (p - 1) * (q - 1)
         n, d = p * q, modinv(e, z)
-        self.n, self.public, self.private = n, e, d
+        self.n, self.e, self.d = n, e, d
         self.key_length = math.ceil(math.log(n, 256))
 
     def encrypt(self, data, bs=BS):
@@ -119,7 +139,7 @@ class RSA():
         out = []
         for x in range(0, len(data), bs):
             a = bytes_to_int(data[x:x + bs])
-            b = pow(a, self.public, self.n)
+            b = pow(a, self.e, self.n)
             out.extend(int_to_bytes(b, self.key_length))
 
         return bytes(out)
@@ -130,19 +150,50 @@ class RSA():
         data, out = list(data), []
         for x in range(0, len(data), self.key_length):
             a = bytes_to_int(data[x:x + self.key_length])
-            b = pow(a, self.private, self.n)
+            b = pow(a, self.d, self.n)
             out.extend(int_to_bytes(b))
 
         return bytes(out)
 
+    def import_key(self, key):
+        ''' import key values from json string '''
+
+        key = json.loads(key)
+
+        self.n = b64_to_int(key['n']) if key['n'] else self.n
+        self.e = b64_to_int(key['e']) if key['e'] else self.e
+        self.d = b64_to_int(key['d']) if key['d'] else self.d
+
+        self.key_length = math.ceil(math.log(self.n, 256))
+
+    def export_key(self, private=False):
+        ''' export key values to json string '''
+
+        return json.dumps({
+            'n': int_to_b64(self.n),
+            'e': int_to_b64(self.e),
+            'd': int_to_b64(self.d) if private else False
+        })
+
 
 if __name__ == '__main__':
+    with open('rsa.py', 'rb') as f:
+        data = f.read()
+
     rsa = RSA()
     rsa.new_key()
 
-    with open('rsa.py') as f:
-        data = f.read()
-    cipher = rsa.encrypt(data.encode())
+    key = rsa.export_key()
+
+    print(key)
+
+    rsa2 = RSA()
+    rsa2.import_key(key)
+
+    cipher = rsa2.encrypt(data)
+
     print(cipher)
-    data = rsa.decrypt(cipher).decode()
-    print(data)
+
+    plaintext = rsa.decrypt(cipher).decode()
+
+    print(plaintext)
